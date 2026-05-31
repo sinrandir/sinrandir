@@ -148,133 +148,288 @@
         const stars = new THREE.Points(starsGeometry, starsMaterial);
         scene.add(stars);
 
-        // Create Earth Texture
-        function createEarthTexture() {
+        // Create Realistic Earth Texture with actual geography
+        function createRealisticEarthTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 4096;
-            canvas.height = 2048;
+            canvas.width = 8192;
+            canvas.height = 4096;
             const ctx = canvas.getContext('2d');
 
-            // Ocean color
-            ctx.fillStyle = '#1a5f7a';
+            // Deep ocean blue background
+            ctx.fillStyle = '#0a3d62';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Land color
-            ctx.fillStyle = '#2d8659';
+            // Add ocean depth variation
+            const oceanGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            oceanGradient.addColorStop(0, '#1a5490');
+            oceanGradient.addColorStop(0.5, '#0a3d62');
+            oceanGradient.addColorStop(1, '#051e2d');
+            ctx.fillStyle = oceanGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw continents
-            const continents = [
-                { x: 400, y: 600, w: 300, h: 400 }, // North America
-                { x: 600, y: 1200, w: 180, h: 300 }, // South America
-                { x: 800, y: 400, w: 100, h: 180 }, // Greenland
-                { x: 1500, y: 650, w: 200, h: 200 }, // Europe
-                { x: 1600, y: 1100, w: 250, h: 350 }, // Africa
-                { x: 1800, y: 900, w: 150, h: 180 }, // Middle East
-                { x: 2200, y: 700, w: 300, h: 250 }, // Central Asia
-                { x: 2100, y: 400, w: 400, h: 300 }, // Russia
-                { x: 2600, y: 700, w: 300, h: 250 }, // East Asia
-                { x: 2700, y: 950, w: 150, h: 150 }, // SE Asia
-                { x: 2200, y: 950, w: 120, h: 150 }, // India
-                { x: 2900, y: 1350, w: 200, h: 220 }, // Australia
-                { x: 3150, y: 1450, w: 80, h: 100 }, // New Zealand
-            ];
+            // Land colors - realistic
+            const landColors = {
+                tropical: '#2d7d3a',
+                temperate: '#3a8f47',
+                boreal: '#4a9957',
+                desert: '#c9a961',
+                mountain: '#8b7355',
+                snow: '#d4e6f1'
+            };
 
-            continents.forEach(c => {
+            // Draw detailed continents
+            function drawContinent(x, y, w, h, rotation, landColor, details = []) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(rotation);
+                
+                // Main landmass
+                ctx.fillStyle = landColor;
                 ctx.beginPath();
-                ctx.ellipse(c.x, c.y, c.w, c.h, Math.random() * 0.5, 0, Math.PI * 2);
+                ctx.ellipse(0, 0, w, h, 0, 0, Math.PI * 2);
                 ctx.fill();
-            });
 
-            // Antarctica
-            ctx.fillRect(0, 1700, canvas.width, 348);
+                // Add detail roughness
+                if (details.length > 0) {
+                    ctx.fillStyle = landColors.mountain;
+                    details.forEach(d => {
+                        ctx.beginPath();
+                        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
 
-            // Add clouds
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-            for (let i = 0; i < 100; i++) {
+                ctx.restore();
+            }
+
+            // North America - with mountain ranges
+            drawContinent(800, 900, 400, 550, -0.3, landColors.temperate, [
+                { x: -150, y: -100, r: 80 }, // Rocky Mountains
+                { x: 100, y: -200, r: 60 },  // Appalachians
+            ]);
+
+            // Central America
+            drawContinent(1100, 1300, 120, 150, 0.2, landColors.tropical);
+
+            // South America
+            drawContinent(1200, 1800, 280, 450, -0.1, landColors.temperate, [
+                { x: -80, y: -100, r: 70 }, // Andes
+            ]);
+
+            // Greenland
+            drawContinent(1500, 600, 150, 250, 0, landColors.snow);
+
+            // Europe
+            drawContinent(2200, 900, 280, 280, 0.1, landColors.temperate, [
+                { x: 80, y: -100, r: 50 }, // Alps
+            ]);
+
+            // Northern Africa - Sahara Desert
+            drawContinent(2500, 1200, 350, 280, 0, landColors.desert, [
+                { x: -50, y: 150, r: 40 },  // Atlas Mountains
+            ]);
+
+            // Central Africa
+            drawContinent(2600, 1500, 280, 380, 0.05, landColors.tropical, [
+                { x: 0, y: -100, r: 60 }, // East African Highlands
+            ]);
+
+            // Middle East
+            drawContinent(2800, 1050, 200, 220, 0.15, landColors.desert, [
+                { x: 50, y: -80, r: 40 }, // Zagros Mountains
+            ]);
+
+            // Central Asia
+            drawContinent(3200, 800, 450, 350, 0.1, landColors.boreal, [
+                { x: 100, y: -50, r: 100 }, // Himalayas
+                { x: -150, y: -100, r: 80 }, // Ural Mountains
+            ]);
+
+            // Russia - vast land
+            drawContinent(3100, 600, 550, 400, 0, landColors.boreal);
+
+            // China & East Asia
+            drawContinent(3700, 850, 380, 320, 0.1, landColors.temperate, [
+                { x: 100, y: -80, r: 70 }, // Himalayan extension
+            ]);
+
+            // Southeast Asia
+            drawContinent(3950, 1150, 200, 180, 0.2, landColors.tropical);
+
+            // India - distinct subcontinent
+            drawContinent(3300, 1250, 200, 280, 0.15, landColors.temperate, [
+                { x: -50, y: -100, r: 60 }, // Western Ghats
+            ]);
+
+            // Indonesia - archipelago
+            drawContinent(4100, 1350, 300, 180, 0.3, landColors.tropical);
+
+            // Australia
+            drawContinent(4300, 1700, 380, 420, 0.1, landColors.desert, [
+                { x: 0, y: -150, r: 50 }, // Great Dividing Range
+            ]);
+
+            // New Zealand
+            drawContinent(4650, 1900, 120, 160, 0.2, landColors.temperate);
+
+            // Antarctica - large ice sheet
+            ctx.fillStyle = landColors.snow;
+            ctx.fillRect(0, 3500, canvas.width, 596);
+
+            // Add ice caps at poles
+            ctx.fillStyle = 'rgba(212, 230, 241, 0.8)';
+            ctx.beginPath();
+            ctx.ellipse(canvas.width / 2, 200, canvas.width / 2, 300, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Add detailed cloud systems
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            
+            // Trade wind clouds
+            for (let i = 0; i < 80; i++) {
+                const x = Math.random() * canvas.width;
+                const y = 1200 + Math.sin(x / 300) * 200;
+                const radius = Math.random() * 100 + 60;
                 ctx.beginPath();
-                ctx.arc(
-                    Math.random() * canvas.width,
-                    Math.random() * canvas.height,
-                    Math.random() * 80 + 40,
-                    0,
-                    Math.PI * 2
-                );
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Polar clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            for (let i = 0; i < 60; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() < 0.5 ? 
+                    Math.random() * 400 : 
+                    3200 + Math.random() * 400;
+                const radius = Math.random() * 80 + 40;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Cyclone/hurricane patterns (swirling clouds)
+            ctx.fillStyle = 'rgba(200, 220, 240, 0.3)';
+            for (let i = 0; i < 10; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                for (let j = 0; j < 5; j++) {
+                    const angle = (j / 5) * Math.PI * 2;
+                    const cx = x + Math.cos(angle) * (150 + j * 40);
+                    const cy = y + Math.sin(angle) * (150 + j * 40);
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 30 + j * 10, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Add some shimmer/specular highlights
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                ctx.beginPath();
+                ctx.arc(x, y, Math.random() * 20 + 5, 0, Math.PI * 2);
                 ctx.fill();
             }
 
             return new THREE.CanvasTexture(canvas);
         }
 
-        const earthTexture = createEarthTexture();
+        const earthTexture = createRealisticEarthTexture();
 
-        // Create Earth
-        const earthGeometry = new THREE.SphereGeometry(1, 128, 128);
+        // Create Earth with high quality
+        const earthGeometry = new THREE.SphereGeometry(1, 256, 256);
         const earthMaterial = new THREE.MeshPhongMaterial({
             map: earthTexture,
-            shininess: 5,
-            emissive: 0x111111
+            shininess: 8,
+            emissive: 0x1a1a1a,
+            emissiveIntensity: 0.3
         });
 
         const earth = new THREE.Mesh(earthGeometry, earthMaterial);
         earth.rotation.z = -0.41; // Earth's axial tilt
         scene.add(earth);
 
-        // Atmosphere
-        const atmosphereGeometry = new THREE.SphereGeometry(1.05, 128, 128);
+        // Realistic Atmosphere
+        const atmosphereGeometry = new THREE.SphereGeometry(1.06, 128, 128);
         const atmosphereMaterial = new THREE.MeshPhongMaterial({
-            color: 0x4da6ff,
+            color: 0x87ceeb,
             transparent: true,
-            opacity: 0.15,
-            side: THREE.BackSide
+            opacity: 0.2,
+            side: THREE.BackSide,
+            emissive: 0x4da6ff,
+            emissiveIntensity: 0.1
         });
         const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
         scene.add(atmosphere);
 
-        // Clouds
-        function createCloudsTexture() {
+        // Realistic Clouds Layer
+        function createRealisticCloudsTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 2048;
-            canvas.height = 1024;
+            canvas.width = 4096;
+            canvas.height = 2048;
             const ctx = canvas.getContext('2d');
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            for (let i = 0; i < 150; i++) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // High altitude clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            for (let i = 0; i < 200; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = Math.random() * 150 + 80;
                 ctx.beginPath();
-                ctx.arc(
-                    Math.random() * canvas.width,
-                    Math.random() * canvas.height,
-                    Math.random() * 60 + 30,
-                    0,
-                    Math.PI * 2
-                );
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Low altitude clouds (more opaque)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            for (let i = 0; i < 150; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const radius = Math.random() * 120 + 60;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
                 ctx.fill();
             }
 
             return new THREE.CanvasTexture(canvas);
         }
 
-        const cloudsTexture = createCloudsTexture();
-        const cloudsGeometry = new THREE.SphereGeometry(1.02, 128, 128);
+        const cloudsTexture = createRealisticCloudsTexture();
+        const cloudsGeometry = new THREE.SphereGeometry(1.025, 256, 256);
         const cloudsMaterial = new THREE.MeshPhongMaterial({
             map: cloudsTexture,
             transparent: true,
-            opacity: 0.4
+            opacity: 0.45,
+            emissive: 0xffffff,
+            emissiveIntensity: 0.1
         });
         const clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
         clouds.rotation.z = -0.41;
         scene.add(clouds);
 
-        // Lighting
-        const sunLight = new THREE.DirectionalLight(0xffffff, 2);
-        sunLight.position.set(5, 3, 5);
+        // Advanced Lighting
+        const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
+        sunLight.position.set(6, 4, 6);
+        sunLight.castShadow = true;
         scene.add(sunLight);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // Soft ambient light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
 
-        const nightLight = new THREE.PointLight(0x1a5f7a, 0.4);
-        nightLight.position.set(-5, -3, -5);
+        // Night side illumination (from moon/stars reflection)
+        const nightLight = new THREE.PointLight(0x2a5f8f, 0.5);
+        nightLight.position.set(-6, -4, -6);
         scene.add(nightLight);
+
+        // Rim light for atmosphere glow
+        const rimLight = new THREE.DirectionalLight(0x87ceeb, 0.8);
+        rimLight.position.set(-8, 0, 0);
+        scene.add(rimLight);
 
         // Controls
         let isDragging = false;
@@ -362,11 +517,35 @@
             document.getElementById('lng').textContent = lon.toFixed(2);
 
             let location = 'Pacific Ocean';
-            if (lon > -180 && lon < -60 && lat > -60 && lat < 60) location = 'Americas';
-            else if (lon > -30 && lon < 50 && lat > -40 && lat < 70) location = 'Europe & Africa';
-            else if (lon > 50 && lon < 150 && lat > -50 && lat < 60) location = 'Asia';
-            else if (lon > 110 && lon < 180 && lat > -60 && lat < -10) location = 'Australia';
-            else if (lat < -60) location = 'Antarctica';
+            
+            // More detailed location detection
+            if (lon > 280 || lon < -100) {
+                if (lat > 15 && lat < 55) location = 'North America';
+                else if (lat > -35 && lat < 15) location = 'Central America & Caribbean';
+                else if (lat < -15) location = 'South America';
+            } else if (lon > 260 && lon < 330) {
+                if (lat > 50) location = 'Canada & Greenland';
+                else if (lat < -50) location = 'Antarctica';
+                else location = 'Atlantic Ocean';
+            } else if (lon > 330 || lon < -30) {
+                if (lat > 35) location = 'Scandinavia';
+                else if (lat > -35 && lat < 35) location = 'Europe & Africa';
+                else location = 'South Atlantic';
+            } else if (lon > -30 && lon < 100) {
+                if (lat > 40) location = 'Russia';
+                else if (lat < -35) location = 'Antarctica';
+                else if (lat > 0) location = 'Africa & Middle East';
+                else location = 'Indian Ocean';
+            } else if (lon > 100 && lon < 180) {
+                if (lat > 40) location = 'Central Asia';
+                else if (lat > 20) location = 'East Asia';
+                else if (lat < -35) location = 'Australia';
+                else location = 'Southeast Asia';
+            } else if (lon > 150) {
+                if (lat < -45) location = 'Antarctica';
+                else if (lat < -10) location = 'Oceania';
+                else location = 'Pacific Ocean';
+            }
 
             document.getElementById('location').textContent = `Location: ${location}`;
         }
@@ -375,9 +554,9 @@
             requestAnimationFrame(animate);
 
             if (autoRotate && !isPaused) {
-                earth.rotation.y += 0.0001; // Realistic rotation speed
-                clouds.rotation.y += 0.00015;
-                clouds.rotation.z += 0.00003;
+                earth.rotation.y += 0.00008; // Realistic rotation speed
+                clouds.rotation.y += 0.00012; // Clouds move slightly faster
+                clouds.rotation.z += 0.00002;
             }
 
             stars.rotation.x += 0.00001;
@@ -403,7 +582,7 @@
         setTimeout(() => {
             document.getElementById('loading').style.display = 'none';
             animate();
-        }, 300);
+        }, 500);
     </script>
 </body>
 </html>

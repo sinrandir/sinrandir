@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Interactive Earth</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 14px;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .info h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+
+        .info p {
+            margin: 5px 0;
+            color: #aaa;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px 30px;
+            border-radius: 10px;
+            color: #fff;
+            text-align: center;
+            font-size: 14px;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .controls p {
+            margin: 5px 0;
+            color: #00d4ff;
+        }
+
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: #00d4ff;
+            font-size: 12px;
+            z-index: 10;
+            font-family: 'Courier New', monospace;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .rotate-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #00d4ff;
+            font-size: 12px;
+            z-index: 10;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="info">
+            <h1>🌍 Interactive Earth</h1>
+            <p>✨ Spin • Zoom • Explore</p>
+        </div>
+
+        <div class="stats">
+            <div>FPS: <span id="fps">60</span></div>
+            <div>Rotation: <span id="rotation">0°</span></div>
+        </div>
+
+        <div class="controls">
+            <p>🖱️ Drag to Rotate | 🔍 Scroll to Zoom | 📱 Touch & Drag on Mobile</p>
+        </div>
+
+        <div class="rotate-indicator">
+            🔄 Auto-rotating...
+        </div>
+    </div>
+
+    <script>
+        // Scene Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        camera.position.z = 2.5;
+
+        // Create Stars Background
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.02,
+                sizeAttenuation: true,
+            });
+
+            const starsVertices = [];
+            for (let i = 0; i < 1000; i++) {
+                const x = (Math.random() - 0.5) * 200;
+                const y = (Math.random() - 0.5) * 200;
+                const z = (Math.random() - 0.5) * 200;
+                starsVertices.push(x, y, z);
+            }
+
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(starsVertices), 3));
+            return new THREE.Points(starsGeometry, starsMaterial);
+        }
+
+        const stars = createStars();
+        scene.add(stars);
+
+        // Create Earth
+        const textureLoader = new THREE.TextureLoader();
+        
+        // Using NASA Blue Marble texture (public domain)
+        const earthTexture = textureLoader.load('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+        
+        // Create a procedural Earth texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 2048;
+        canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+        
+        // Sky blue background
+        ctx.fillStyle = '#4da6ff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add continents (simplified)
+        ctx.fillStyle = '#2d8659';
+        
+        // North America
+        ctx.beginPath();
+        ctx.ellipse(200, 300, 150, 200, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // South America
+        ctx.beginPath();
+        ctx.ellipse(300, 500, 100, 150, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Europe & Africa
+        ctx.beginPath();
+        ctx.ellipse(900, 350, 200, 250, -0.1, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Asia
+        ctx.beginPath();
+        ctx.ellipse(1300, 250, 300, 200, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Australia
+        ctx.beginPath();
+        ctx.ellipse(1500, 600, 100, 120, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Add clouds
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        for (let i = 0; i < 50; i++) {
+            ctx.beginPath();
+            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 50 + 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        const canvasTexture = new THREE.CanvasTexture(canvas);
+        
+        const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
+        const earthMaterial = new THREE.MeshPhongMaterial({
+            map: canvasTexture,
+            shininess: 10,
+        });
+        const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+        earth.castShadow = true;
+        earth.receiveShadow = true;
+        scene.add(earth);
+
+        // Create Atmosphere Glow
+        const atmosphereGeometry = new THREE.SphereGeometry(1.05, 64, 64);
+        const atmosphereMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4da6ff,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.BackSide,
+        });
+        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        scene.add(atmosphere);
+
+        // Create Clouds Layer
+        const cloudsGeometry = new THREE.SphereGeometry(1.02, 64, 64);
+        const cloudsMaterial = new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.4,
+            emissive: 0x444444,
+        });
+        const clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+        scene.add(clouds);
+
+        // Lighting
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        sunLight.position.set(5, 3, 5);
+        sunLight.castShadow = true;
+        scene.add(sunLight);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        // Add point light for night side glow
+        const nightLight = new THREE.PointLight(0x4da6ff, 0.3);
+        nightLight.position.set(-3, -2, -3);
+        scene.add(nightLight);
+
+        // Mouse Controls
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotation = { x: 0, y: 0 };
+
+        document.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                rotation.y += deltaX * 0.005;
+                rotation.x += deltaY * 0.005;
+
+                earth.rotation.y = rotation.y;
+                earth.rotation.x = rotation.x;
+                clouds.rotation.y = rotation.y;
+                clouds.rotation.x = rotation.x;
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Touch Controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            const deltaX = e.touches[0].clientX - touchStartX;
+            const deltaY = e.touches[0].clientY - touchStartY;
+
+            rotation.y += deltaX * 0.005;
+            rotation.x += deltaY * 0.005;
+
+            earth.rotation.y = rotation.y;
+            earth.rotation.x = rotation.x;
+            clouds.rotation.y = rotation.y;
+            clouds.rotation.x = rotation.x;
+
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        // Zoom Controls
+        document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            camera.position.z += e.deltaY * 0.001;
+            camera.position.z = Math.max(1.5, Math.min(5, camera.position.z));
+        }, { passive: false });
+
+        // Auto-rotation when not dragging
+        let autoRotate = true;
+        document.addEventListener('mousedown', () => {
+            autoRotate = false;
+        });
+
+        document.addEventListener('mouseup', () => {
+            setTimeout(() => {
+                autoRotate = true;
+            }, 500);
+        });
+
+        // Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation Loop
+        let frameCount = 0;
+        let lastTime = Date.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Auto-rotation
+            if (autoRotate) {
+                earth.rotation.y += 0.0002;
+                clouds.rotation.y += 0.0003;
+            }
+
+            // Clouds rotation
+            clouds.rotation.z += 0.00005;
+
+            // Stars rotation
+            stars.rotation.x += 0.00001;
+            stars.rotation.y += 0.00001;
+
+            // Update FPS
+            frameCount++;
+            const currentTime = Date.now();
+            if (currentTime - lastTime >= 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+
+            // Update rotation display
+            const rotationDegrees = (earth.rotation.y * 180 / Math.PI) % 360;
+            document.getElementById('rotation').textContent = rotationDegrees.toFixed(0) + '°';
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
